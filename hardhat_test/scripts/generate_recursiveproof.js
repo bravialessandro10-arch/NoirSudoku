@@ -25,12 +25,7 @@ function vkToFields(vk) {
 async function main() {
   console.log('🔄 Generazione Proof Aggregata \n');
 
-  // ============================================================
-  // ⭐ CRS ESPLICITO (2^22) - FIX DEFINITIVO
-  // ============================================================
-  const CRS_SIZE = 1 << 22;
-  console.log(`[0] Creazione CRS esplicito (size = 2^22)...`);
-  const crs = await Crs.new(CRS_SIZE);
+
 
   // ============================================================
   // ⭐ Inizializzazione Barretenberg API (INNER)
@@ -69,7 +64,7 @@ async function main() {
       verifierTarget: 'noir-recursive-no-zk',
     });
 
-  console.log('✅ Inner proofs generated');
+  console.log('Inner proofs generated');
   console.log(`   4x4 proof size: ${proof4x4.length} bytes`);
   console.log(`   9x9 proof size: ${proof9x9.length} bytes`);
 
@@ -128,7 +123,7 @@ async function main() {
   };
 
   // ============================================================
-  // 8. Backend AGGREGATOR (USA LO STESSO CRS)
+  // 8. Backend AGGREGATOR 
   // ============================================================
   console.log('[6] Setup aggregator backend...');
   const aggregatorApi = await Barretenberg.new({ crs, threads: 8 });
