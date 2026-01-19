@@ -1,6 +1,0 @@
-[package]
-name = "Sudoku1616"
-type = "bin"
-authors = [""]
-
-[dependencies]
