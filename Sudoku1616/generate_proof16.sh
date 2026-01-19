@@ -1,0 +1,209 @@
+#!/bin/bash
+set -e
+
+echo "🔨 Generazione Proof Sudoku 16×16 con Metriche"
+echo "=============================================="
+
+# 1. Compila circuito
+echo "📦 Compilazione..."
+nargo compile
+
+if [ $? -ne 0 ]; then
+    echo "❌ Errore compilazione"
+    exit 1
+fi
+
+# 2. Genera VK (con misurazione tempo)
+echo "🔑 Generazione verification key..."
+VK_START=$(date +%s%N)
+bb write_vk -b ./target/Sudoku1616.json -o ./target --oracle_hash keccak
+VK_END=$(date +%s%N)
+VK_TIME=$(echo "scale=3; ($VK_END - $VK_START) / 1000000000" | bc)
+
+# 3. Genera Verifier Solidity
+echo "📜 Generazione Verifier.sol..."
+VERIFIER_START=$(date +%s%N)
+bb write_solidity_verifier -k ./target/vk -o ./target/Verifier16.sol
+VERIFIER_END=$(date +%s%N)
+VERIFIER_TIME=$(echo "scale=3; ($VERIFIER_END - $VERIFIER_START) / 1000000000" | bc)
+
+# 4. Crea Prover.toml con problema 16×16
+echo "📝 Generazione Prover.toml..."
+cat > Prover.toml << 'EOF'
+# Problema 16×16 (0 = cella vuota)
+# Problema con ~50% celle vuote
+problema = [
+    [1, 0, 0, 4, 0, 0, 7, 0, 0, 10, 0, 0, 13, 0, 0, 16],
+    [0, 6, 0, 0, 9, 0, 0, 12, 0, 0, 15, 0, 0, 2, 0, 0],
+    [0, 0, 11, 0, 0, 14, 0, 0, 1, 0, 0, 4, 0, 0, 7, 0],
+    [13, 0, 0, 16, 0, 0, 3, 0, 0, 6, 0, 0, 9, 0, 0, 12],
+    [2, 0, 0, 3, 0, 0, 8, 0, 0, 9, 0, 0, 14, 0, 0, 15],
+    [0, 5, 0, 0, 10, 0, 0, 11, 0, 0, 16, 0, 0, 1, 0, 0],
+    [0, 0, 12, 0, 0, 13, 0, 0, 2, 0, 0, 3, 0, 0, 8, 0],
+    [14, 0, 0, 15, 0, 0, 4, 0, 0, 5, 0, 0, 10, 0, 0, 11],
+    [3, 0, 0, 2, 0, 0, 5, 0, 0, 12, 0, 0, 15, 0, 0, 14],
+    [0, 8, 0, 0, 11, 0, 0, 10, 0, 0, 13, 0, 0, 4, 0, 0],
+    [0, 0, 9, 0, 0, 16, 0, 0, 3, 0, 0, 2, 0, 0, 5, 0],
+    [15, 0, 0, 14, 0, 0, 1, 0, 0, 8, 0, 0, 11, 0, 0, 10],
+    [4, 0, 0, 1, 0, 0, 6, 0, 0, 11, 0, 0, 16, 0, 0, 13],
+    [0, 7, 0, 0, 12, 0, 0, 9, 0, 0, 14, 0, 0, 3, 0, 0],
+    [0, 0, 10, 0, 0, 15, 0, 0, 4, 0, 0, 1, 0, 0, 6, 0],
+    [16, 0, 0, 13, 0, 0, 2, 0, 0, 7, 0, 0, 12, 0, 0, 9]
+]
+
+# Soluzione completa (uguale a prima)
+soluzione = [
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+    [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1, 2, 3, 4],
+    [9, 10, 11, 12, 13, 14, 15, 16, 1, 2, 3, 4, 5, 6, 7, 8],
+    [13, 14, 15, 16, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    [2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15],
+    [6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 2, 1, 4, 3],
+    [10, 9, 12, 11, 14, 13, 16, 15, 2, 1, 4, 3, 6, 5, 8, 7],
+    [14, 13, 16, 15, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11],
+    [3, 4, 1, 2, 7, 8, 5, 6, 11, 12, 9, 10, 15, 16, 13, 14],
+    [7, 8, 5, 6, 11, 12, 9, 10, 15, 16, 13, 14, 3, 4, 1, 2],
+    [11, 12, 9, 10, 15, 16, 13, 14, 3, 4, 1, 2, 7, 8, 5, 6],
+    [15, 16, 13, 14, 3, 4, 1, 2, 7, 8, 5, 6, 11, 12, 9, 10],
+    [4, 3, 2, 1, 8, 7, 6, 5, 12, 11, 10, 9, 16, 15, 14, 13],
+    [8, 7, 6, 5, 12, 11, 10, 9, 16, 15, 14, 13, 4, 3, 2, 1],
+    [12, 11, 10, 9, 16, 15, 14, 13, 4, 3, 2, 1, 8, 7, 6, 5],
+    [16, 15, 14, 13, 4, 3, 2, 1, 8, 7, 6, 5, 12, 11, 10, 9]
+]
+EOF
+
+# 5. Esegui circuito (genera witness con misurazione)
+echo "⚙️  Esecuzione circuito..."
+WITNESS_START=$(date +%s%N)
+nargo execute
+WITNESS_END=$(date +%s%N)
+WITNESS_TIME=$(echo "scale=3; ($WITNESS_END - $WITNESS_START) / 1000000000" | bc)
+
+if [ $? -ne 0 ]; then
+    echo "❌ Errore esecuzione (soluzione non valida?)"
+    exit 1
+fi
+
+# 6. Genera proof (CON MISURAZIONE PRECISA)
+echo "🔐 Generazione proof..."
+PROOF_START=$(date +%s%N)
+
+bb prove -b ./target/Sudoku1616.json \
+    -w ./target/Sudoku1616.gz \
+    -o ./target \
+    --oracle_hash keccak 
+    
+PROOF_END=$(date +%s%N)
+PROOF_TIME=$(echo "scale=3; ($PROOF_END - $PROOF_START) / 1000000000" | bc)
+
+# 7. MISURA DIMENSIONI FILE
+# Compatibile sia con macOS che Linux
+PROOF_SIZE=$(stat -f%z ./target/proof 2>/dev/null || stat -c%s ./target/proof)
+VK_SIZE=$(stat -f%z ./target/vk 2>/dev/null || stat -c%s ./target/vk)
+WITNESS_SIZE=$(stat -f%z ./target/Sudoku1616.gz 2>/dev/null || stat -c%s ./target/Sudoku1616.gz)
+VERIFIER_SIZE=$(stat -f%z ./target/Verifier16.sol 2>/dev/null || stat -c%s ./target/Verifier16.sol)
+
+# Converti in KB
+PROOF_KB=$(echo "scale=2; $PROOF_SIZE / 1024" | bc)
+VK_KB=$(echo "scale=2; $VK_SIZE / 1024" | bc)
+WITNESS_KB=$(echo "scale=2; $WITNESS_SIZE / 1024" | bc)
+VERIFIER_KB=$(echo "scale=2; $VERIFIER_SIZE / 1024" | bc)
+
+# Calcola tempo totale
+TOTAL_TIME=$(echo "scale=3; $VK_TIME + $WITNESS_TIME + $PROOF_TIME + $VERIFIER_TIME" | bc)
+
+# 8. REPORT DETTAGLIATO
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo "📊 REPORT METRICHE - SUDOKU 16×16"
+echo "════════════════════════════════════════════════════════════"
+echo ""
+echo "⏱️  TEMPI DI ESECUZIONE:"
+echo "   ┌─────────────────────────────────────────────────────┐"
+echo "   │ VK Generation:        ${VK_TIME}s          │"
+echo "   │ Verifier Generation:  ${VERIFIER_TIME}s          │"
+echo "   │ Witness Generation:   ${WITNESS_TIME}s          │"
+echo "   │ ⭐ PROOF Generation:  ${PROOF_TIME}s ⭐       │"
+echo "   ├─────────────────────────────────────────────────────┤"
+echo "   │ TOTALE:               ${TOTAL_TIME}s          │"
+echo "   └─────────────────────────────────────────────────────┘"
+echo ""
+echo "📦 DIMENSIONI FILE:"
+echo "   ┌─────────────────────────────────────────────────────┐"
+echo "   │ ⭐ Proof:             ${PROOF_KB} KB (${PROOF_SIZE} bytes) ⭐  │"
+echo "   │ Verification Key:     ${VK_KB} KB (${VK_SIZE} bytes)    │"
+echo "   │ Witness:              ${WITNESS_KB} KB (${WITNESS_SIZE} bytes)   │"
+echo "   │ Verifier.sol:         ${VERIFIER_KB} KB (${VERIFIER_SIZE} bytes) │"
+echo "   └─────────────────────────────────────────────────────┘"
+echo ""
+echo "📈 CARATTERISTICHE CIRCUITO:"
+echo "   • Dimensione griglia:  16×16"
+echo "   • Celle totali:        256"
+echo "   • Public inputs:       256"
+echo "   • Blocchi 4×4:         16"
+echo "   • Range valori:        1-16"
+echo ""
+echo "════════════════════════════════════════════════════════════"
+
+# 9. SALVA METRICHE IN FILE CSV
+METRICS_FILE="./target/metrics_16x16.csv"
+
+# Crea header se non esiste
+if [ ! -f "$METRICS_FILE" ]; then
+    echo "timestamp,vk_time,verifier_time,witness_time,proof_time,total_time,proof_size_bytes,proof_size_kb,vk_size_kb,witness_size_kb,verifier_size_kb" > "$METRICS_FILE"
+fi
+
+# Aggiungi riga
+TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+echo "$TIMESTAMP,$VK_TIME,$VERIFIER_TIME,$WITNESS_TIME,$PROOF_TIME,$TOTAL_TIME,$PROOF_SIZE,$PROOF_KB,$VK_KB,$WITNESS_KB,$VERIFIER_KB" >> "$METRICS_FILE"
+
+echo "💾 Metriche salvate in: $METRICS_FILE"
+echo ""
+
+# 10. CREA REPORT TESTUALE
+REPORT_FILE="./target/report_16x16.txt"
+cat > "$REPORT_FILE" << EOF
+═══════════════════════════════════════════════════════════════
+SUDOKU 16×16 - ZERO-KNOWLEDGE PROOF GENERATION REPORT
+═══════════════════════════════════════════════════════════════
+
+Data: $TIMESTAMP
+
+PARAMETRI CHIAVE (per tesi):
+─────────────────────────────────────────────────────────────
+- Tempo Generazione Proof:    ${PROOF_TIME}s
+- Dimensione Proof:            ${PROOF_KB} KB (${PROOF_SIZE} bytes)
+
+BREAKDOWN COMPLETO:
+─────────────────────────────────────────────────────────────
+Tempi:
+  - VK generation:             ${VK_TIME}s
+  - Verifier generation:       ${VERIFIER_TIME}s
+  - Witness generation:        ${WITNESS_TIME}s
+  - Proof generation:          ${PROOF_TIME}s
+  - TOTALE:                    ${TOTAL_TIME}s
+
+Dimensioni:
+  - Proof:                     ${PROOF_KB} KB
+  - Verification Key:          ${VK_KB} KB
+  - Witness (compressed):      ${WITNESS_KB} KB
+  - Verifier.sol:              ${VERIFIER_KB} KB
+
+CARATTERISTICHE CIRCUITO:
+─────────────────────────────────────────────────────────────
+  - Tipo:                      Sudoku 16×16
+  - Celle totali:              256
+  - Public inputs:             256
+  - Blocchi 4×4:               16
+  - Constraint (stima):        ~3,500
+  - Schema:                    UltraHonk
+  - Hash Oracle:               Keccak
+
+═══════════════════════════════════════════════════════════════
+EOF
+
+echo "📄 Report testuale salvato in: $REPORT_FILE"
+echo ""
+echo "✅ GENERAZIONE COMPLETATA CON SUCCESSO!"
+echo ""
+

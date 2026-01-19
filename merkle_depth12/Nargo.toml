@@ -1,0 +1,6 @@
+[package]
+name = "merkle_depth12"
+type = "bin"
+authors = [""]
+
+[dependencies]

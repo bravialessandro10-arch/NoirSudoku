@@ -1,0 +1,6 @@
+[package]
+name = "Sudoku44"
+type = "bin"
+authors = [""]
+
+[dependencies]
