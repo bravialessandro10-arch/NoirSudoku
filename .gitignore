@@ -1,0 +1,8 @@
+node_modules/
+*.gz
+*.log
+.DS_Store
+cache/
+artifacts/
+dist/
+merkle_depth*/

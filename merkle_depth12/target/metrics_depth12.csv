@@ -1,2 +1,0 @@
-timestamp,depth,max_elements,compile_time,vk_time,verifier_time,witness_time,proof_time,total_time,proof_size_bytes,proof_size_kb,vk_size_kb,witness_size_kb,verifier_size_kb
-2026-01-18 17:35:14,12,4096,.257,.517,.006,.205,1.226,2.211,9024,8.81,1.84,44.03,96.17
